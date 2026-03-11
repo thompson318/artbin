@@ -1,0 +1,28 @@
+Package: artbin
+Title: Sample Size and Power for Binary Outcome Trials
+Version: 0.1.0
+Authors@R: c(
+    person("Abdel", "Babiker", role = "aut"),
+    person("Patrick", "Royston", role = "aut"),
+    person("Friederike", "Barthel", role = "aut"),
+    person("Ella", "Marley-Zagar", role = "aut"),
+    person("Ian", "White", role = c("aut", "cre"),
+           email = "ian.white@ucl.ac.uk")
+  )
+Description: Calculates sample size and power for clinical trials with binary
+    outcomes. Supports superiority, non-inferiority, and substantial-superiority
+    designs for two or more treatment arms. Implements score, Wald, and
+    conditional (Peto's approximation) tests, with options for continuity
+    correction, linear trend tests, loss to follow-up, and unequal allocation.
+    Based on the Stata artbin/art2bin programs from the MRC Clinical Trials Unit
+    at UCL.
+License: GPL (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    cli
+Suggests:
+    testthat (>= 3.0.0),
+    tibble
+Config/testthat/edition: 3
