@@ -22,7 +22,8 @@ artbin(
   noround = FALSE,
   favourable = NULL,
   force = FALSE,
-  nvmethod = NULL
+  nvmethod = NULL,
+  convcrit = 1e-07
 )
 }
 \arguments{
@@ -81,6 +82,9 @@ outcome direction conflicts with \code{favourable}. Default \code{FALSE}.}
 \item{nvmethod}{Integer (1, 2, or 3). Method for estimating null-hypothesis
 event probabilities in 2-arm trials. \code{1} = sample estimate; \code{2} = fixed
 marginal totals; \code{3} = constrained maximum likelihood (default).}
+
+\item{convcrit}{Numeric. Convergence criterion for the bisection used in
+k-group calculations. Default \code{1e-7}.}
 }
 \value{
 An object of class \code{"artbin"}, which is a named list containing:

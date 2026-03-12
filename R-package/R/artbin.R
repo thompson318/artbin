@@ -41,6 +41,8 @@
 #' @param nvmethod Integer (1, 2, or 3). Method for estimating null-hypothesis
 #'   event probabilities in 2-arm trials. `1` = sample estimate; `2` = fixed
 #'   marginal totals; `3` = constrained maximum likelihood (default).
+#' @param convcrit Numeric. Convergence criterion for the bisection used in
+#'   k-group calculations. Default `1e-7`.
 #'
 #' @return An object of class `"artbin"`, which is a named list containing:
 #'   \describe{
