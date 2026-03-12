@@ -103,7 +103,8 @@ artbin <- function(pr,
                    noround   = FALSE,
                    favourable = NULL,
                    force     = FALSE,
-                   nvmethod  = NULL) {
+                   nvmethod  = NULL,
+                   convcrit  = 1e-7) {
 
   # -------------------------------------------------------------------------
   # Input validation
@@ -351,7 +352,8 @@ artbin <- function(pr,
       doses     = doses,
       condit    = condit,
       wald      = wald,
-      local_alt = local
+      local_alt = local,
+      convcrit  = convcrit
     )
 
     n_raw   <- resk$n
