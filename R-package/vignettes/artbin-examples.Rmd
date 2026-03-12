@@ -101,9 +101,70 @@ for 20% loss to follow-up. When the STREAM trial concluded, it found that the
 shorter treatment was only 1% less effective than the WHO-recommended treatment,
 demonstrating significant evidence of non-inferiority.
 
+## Further examples
+
+### Local alternatives
+
+For trials with small treatment effects (odds ratio roughly 0.5–2), the `local`
+approximation can be used. It computes the variance under the null only, which
+tends to give slightly larger sample sizes than the default (distant
+alternatives).
+
+```{r local}
+artbin(pr = c(0.25, 0.35), local = TRUE)
+artbin(pr = c(0.25, 0.35))          # default: distant alternatives
+```
+
+### Continuity correction
+
+```{r ccorrect}
+artbin(pr = c(0.05, 0.10), alpha = 0.05, power = 0.9, ccorrect = TRUE)
+```
+
+### Conditional (Peto) test
+
+Peto's conditional test conditions on the total number of events observed and
+uses Peto's one-step approximation to the log odds ratio.
+
+```{r condit}
+artbin(pr = c(0.25, 0.35), condit = TRUE)
+```
+
+### Multi-arm trial with unequal allocation
+
+```{r unequal-multiarm}
+artbin(pr = c(0.15, 0.25, 0.35, 0.45), aratios = c(1, 2, 2, 2))
+```
+
+### Trend test in a multi-arm trial
+
+When the primary analysis will test for a linear trend across groups, use
+`trend = TRUE`. By default doses are `1, 2, ..., K`.
+
+```{r trend}
+artbin(pr = c(0.15, 0.25, 0.35, 0.45), trend = TRUE)
+```
+
+### Power from sample size
+
+Provide `n` instead of `power` to calculate the achieved power for a fixed
+sample size.
+
+```{r power-from-n}
+artbin(pr = c(0.1, 0.05), alpha = 0.05, n = 1156, wald = TRUE)
+```
+
 ## References
+
+Marley-Zagar E, White IR, Royston P, Barthel FM-S, Parmar MKB, Babiker AG
+(2023). artbin: Extended sample size for randomised trials with binary
+outcomes. *Stata Journal*, 23, 24–52.
 
 Pocock SJ (1983). *Clinical Trials: A Practical Approach*. Wiley.
 
 Nunn AJ et al. (2019). A Trial of a Shorter Regimen for Rifampin-Resistant
 Tuberculosis. *New England Journal of Medicine*, 380, 1201–1213.
+
+Quartagno M, Walker AS, Babiker AG et al. (2020). Handling an uncertain
+control group event risk in non-inferiority trials: non-inferiority frontiers
+and the power-stabilising transformation. *Trials*, 21, 145.

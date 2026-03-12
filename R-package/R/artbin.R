@@ -3,51 +3,109 @@
 #' Calculates sample size (given power) or power (given total sample size) for
 #' clinical trials with binary outcomes, supporting two or more arms.
 #'
-#' @param pr Numeric vector of length >= 2. Anticipated event probabilities.
-#'   The first element is the control group; subsequent elements are treatment
-#'   groups. All values must be strictly between 0 and 1.
-#' @param margin Numeric. Non-inferiority or substantial-superiority margin.
-#'   Use 0 (default) for a superiority trial. For a 2-arm trial only.
+#' @param pr Numeric vector of length >= 2. Anticipated event probabilities
+#'   (`pi1^a, pi2^a, ...`). The first element is the control group; subsequent
+#'   elements are treatment groups. All values must be strictly between 0 and 1.
+#' @param margin Numeric in (-1, 1). Non-inferiority or substantial-superiority
+#'   margin for the difference in proportions (`pi2 - pi1`). Use `0` (default)
+#'   for a superiority trial. Only applies to 2-arm trials.
+#'
+#'   For an **unfavourable** outcome (lower probability is better):
+#'   - `m > 0`: non-inferiority — H0: `pi2 - pi1 >= m`, H1: `pi2 - pi1 < m`
+#'   - `m < 0`: substantial-superiority — H0: `pi2 - pi1 >= m`, H1: `pi2 - pi1 < m`
+#'
+#'   For a **favourable** outcome (higher probability is better), the
+#'   inequalities are reversed:
+#'   - `m < 0`: non-inferiority — H0: `pi2 - pi1 <= m`, H1: `pi2 - pi1 > m`
+#'   - `m > 0`: substantial-superiority — H0: `pi2 - pi1 <= m`, H1: `pi2 - pi1 > m`
 #' @param power Numeric in (0, 1). Desired power. Default `0.8`. Mutually
 #'   exclusive with `n`.
 #' @param n Integer. Total sample size, used to calculate power. Mutually
 #'   exclusive with `power`.
-#' @param aratios Numeric vector. Allocation ratios. For a 2-arm trial,
-#'   `aratios = r` is interpreted as `1:r`. Default: equal allocation.
-#'   For >2 arms, must supply one ratio per arm.
+#' @param aratios Numeric vector. Allocation ratios for groups 1, 2, ..., K.
+#'   For a 2-arm trial, a scalar `r` is interpreted as `1:r`. Default: equal
+#'   allocation to all groups.
 #' @param ltfu Numeric in `[0, 1)`. Expected loss to follow-up proportion.
-#'   Default `0`. The calculated sample size is inflated by `1 / (1 - ltfu)`.
-#' @param alpha Numeric. Two-sided significance level. Default `0.05`.
+#'   Default `0`. The calculated sample size is inflated by `1 / (1 - ltfu)`
+#'   before rounding.
+#' @param alpha Numeric. Significance level. Interpreted as two-sided unless
+#'   `onesided = TRUE`. Default `0.05`.
 #' @param onesided Logical. If `TRUE`, `alpha` is interpreted as a one-sided
-#'   level. Default `FALSE`.
-#' @param trend Logical. Use a linear trend test (>=3 arms only). Default
+#'   level. `alpha(0.05)` is therefore equivalent to `alpha(0.025), onesided`.
+#'   Not allowed for multi-group trials unless `trend` or `doses` is specified.
+#'   Default `FALSE`.
+#'
+#'   Note: `artbin` always powers the trial for the direction of interest only,
+#'   even when a two-sided alpha is given. This differs from [stats::power.prop.test()],
+#'   which reports power for rejection in either direction.
+#' @param trend Logical. Use a linear trend test (>=3 arms only). The default
+#'   is a test for any difference between groups. See also `doses`. Default
 #'   `FALSE`.
-#' @param doses Numeric vector. Dose values for the trend test (implies
-#'   `trend = TRUE`). Defaults to `0, 1, 2, ...` when `trend = TRUE`.
-#' @param condit Logical. Use Peto's conditional test. Default `FALSE`. Forces
-#'   `local = TRUE` automatically.
-#' @param wald Logical. Use the Wald test. Default `FALSE` (score test).
-#' @param ccorrect Logical. Apply continuity correction (2-arm only). Default
+#' @param doses Numeric vector. Dose (or other quantitative) values for a
+#'   linear trend test across groups (implies `trend = TRUE`). If fewer doses
+#'   than groups are provided, the last dose value is repeated for remaining
+#'   groups. Default when `trend = TRUE`: `1, 2, ..., K`. Not permitted for
+#'   2-arm trials.
+#' @param condit Logical. Use Peto's conditional test, which conditions on the
+#'   total number of events and uses Peto's one-step approximation to the log
+#'   odds ratio. This is also a good approximation for other conditional tests.
+#'   Implies `local = TRUE`. Not available for non-inferiority or
+#'   substantial-superiority trials, or with `wald` or `ccorrect`. Default
 #'   `FALSE`.
-#' @param local Logical. Use local alternatives. Default `FALSE` (distant).
+#' @param wald Logical. Use the Wald test (null variance estimated from the
+#'   sample). Default `FALSE` (score test). Cannot be combined with `local`,
+#'   `condit`, or `ccorrect`.
+#' @param ccorrect Logical. Apply a continuity correction. Not available with
+#'   `condit`. 2-arm only. Default `FALSE`.
+#' @param local Logical. Use local alternatives: the variance of the difference
+#'   in proportions is computed under the null hypothesis only, rather than
+#'   under both null and alternative. This approximation is reasonable when the
+#'   odds ratio under the alternative is between about 0.5 and 2, but tends to
+#'   give larger sample sizes than the default (distant alternatives) and is not
+#'   generally recommended. It is included to allow comparisons with other
+#'   software. Cannot be combined with `wald`. Default `FALSE`.
 #' @param noround Logical. If `TRUE`, do not round sample sizes to integers.
-#'   Default `FALSE` (round up). Automatically set to `TRUE` when `n` is
-#'   supplied.
-#' @param favourable Logical or `NULL`. `TRUE` = favourable outcome (event is
-#'   good, e.g. survival); `FALSE` = unfavourable. `NULL` (default) = infer
-#'   from `pr` and `margin`.
-#' @param force Logical. If `TRUE`, suppress the error when the inferred
-#'   outcome direction conflicts with `favourable`. Default `FALSE`.
-#' @param nvmethod Integer (1, 2, or 3). Method for estimating null-hypothesis
-#'   event probabilities in 2-arm trials. `1` = sample estimate; `2` = fixed
-#'   marginal totals; `3` = constrained maximum likelihood (default).
-#' @param convcrit Numeric. Convergence criterion for the bisection used in
-#'   k-group calculations. Default `1e-7`.
+#'   Default `FALSE` (round each group up to the nearest integer).
+#'   Automatically set to `TRUE` when `n` is supplied.
+#' @param favourable Logical or `NULL`. `TRUE` = favourable outcome (higher
+#'   probability is better, e.g. survival); `FALSE` = unfavourable (lower is
+#'   better, e.g. mortality). `NULL` (default) = infer from `pr` and `margin`:
+#'   if `pi2^a > pi1^a + margin` the outcome is assumed favourable, otherwise
+#'   unfavourable.
+#' @param force Logical. If `TRUE`, suppress the error raised when the
+#'   inferred outcome direction conflicts with the `favourable` argument. Useful
+#'   when designing observational studies where a harmful risk factor reverses
+#'   the usual favourability interpretation. Default `FALSE`.
+#' @param nvmethod Integer (1, 2, or 3). Controls how null-hypothesis event
+#'   probabilities are estimated in 2-arm trials. `1` = sample estimate (Wald);
+#'   `2` = fixed marginal totals; `3` = constrained maximum likelihood (score,
+#'   default). Setting `wald = TRUE` automatically uses `nvmethod = 1`; this
+#'   argument is provided for comparisons with other software.
+#' @param convcrit Numeric. Convergence criterion for the bisection algorithm
+#'   used in k-group (>=3 arm) sample size calculations. Tighten (e.g. `1e-8`)
+#'   if greater numerical precision is needed. Default `1e-7`.
+#'
+#' @details
+#' All calculations are based on a Normal approximation to the difference in
+#' proportions (or, with `condit`, to the score statistic). This approximation
+#' may be unreliable for very small samples. As a guide, treat results with
+#' caution when any expected cell count falls below 5 (the standard rule for
+#' Pearson's chi-squared test). For small samples, consider using the continuity
+#' correction (`ccorrect = TRUE`) or verifying the power by simulation.
+#'
+#' In a **multi-group trial**, `artbin` tests the global null hypothesis that
+#' all probabilities are equal. The alternative is that at least two groups
+#' differ.
+#'
+#' `artbin` can also be used to design observational studies. For a harmful
+#' risk factor, the favourable/unfavourable outcome types are reversed relative
+#' to a clinical trial; use `force = TRUE` to override the inferred direction.
 #'
 #' @return An object of class `"artbin"`, which is a named list containing:
 #'   \describe{
 #'     \item{`n`}{Total sample size (or the input `n` when computing power).}
-#'     \item{`n_per_group`}{Named integer vector of per-group sample sizes.}
+#'     \item{`n_per_group`}{Named integer vector of per-group sample sizes
+#'       (`group_1`, `group_2`, ...).}
 #'     \item{`power`}{Power (designed or calculated).}
 #'     \item{`D`}{Expected total number of events.}
 #'     \item{`D_per_group`}{Named numeric vector of per-group expected events.}
@@ -62,6 +120,16 @@
 #'   }
 #'
 #' @references
+#'   Marley-Zagar, E., White, I.R., Royston, P., Barthel, F.M.-S., Parmar,
+#'   M.K.B. & Babiker, A.G. (2023). artbin: Extended sample size for
+#'   randomised trials with binary outcomes. *Stata Journal*, **23**, 24–52.
+#'   \doi{10.1177/1536867X231161971}
+#'
+#'   Quartagno, M., Walker, A.S., Babiker, A.G. et al. (2020). Handling an
+#'   uncertain control group event risk in non-inferiority trials:
+#'   non-inferiority frontiers and the power-stabilising transformation.
+#'   *Trials*, **21**, 145. \doi{10.1186/s13063-020-4070-4}
+#'
 #'   Barthel, F.M.-S., Royston, P. & Babiker, A. (2005). A menu-driven facility
 #'   for complex sample size calculations in randomized controlled trials with a
 #'   survival or a binary outcome: update. *Stata Journal*, **5**, 123–129.
@@ -72,17 +140,23 @@
 #'   Medicine*, **9**, 1447–1454.
 #'
 #' @examples
-#' # 2-arm superiority trial
+#' # 2-arm superiority trial (outcome inferred as favourable: pi2 > pi1)
 #' artbin(pr = c(0.25, 0.35))
 #'
-#' # Non-inferiority trial (unfavourable outcome, p2 <= p1 + margin)
+#' # Same but with local alternatives (reasonable when OR is between 0.5 and 2)
+#' artbin(pr = c(0.25, 0.35), local = TRUE)
+#'
+#' # Non-inferiority trial (unfavourable outcome)
 #' artbin(pr = c(0.1, 0.1), margin = 0.2, wald = TRUE, power = 0.9, alpha = 0.1)
 #'
 #' # Calculate power for a given sample size
 #' artbin(pr = c(0.25, 0.35), n = 400)
 #'
-#' # Four-arm superiority trial
-#' artbin(pr = c(0.15, 0.25, 0.35, 0.45))
+#' # Four-arm superiority trial with unequal allocation (1:2:2:2)
+#' artbin(pr = c(0.15, 0.25, 0.35, 0.45), aratios = c(1, 2, 2, 2))
+#'
+#' # Four-arm trial using a linear trend test
+#' artbin(pr = c(0.15, 0.25, 0.35, 0.45), trend = TRUE)
 #'
 #' # With 20% loss to follow-up
 #' artbin(pr = c(0.25, 0.35), ltfu = 0.2)

@@ -27,12 +27,26 @@ artbin(
 )
 }
 \arguments{
-\item{pr}{Numeric vector of length >= 2. Anticipated event probabilities.
-The first element is the control group; subsequent elements are treatment
-groups. All values must be strictly between 0 and 1.}
+\item{pr}{Numeric vector of length >= 2. Anticipated event probabilities
+(\verb{pi1^a, pi2^a, ...}). The first element is the control group; subsequent
+elements are treatment groups. All values must be strictly between 0 and 1.}
 
-\item{margin}{Numeric. Non-inferiority or substantial-superiority margin.
-Use 0 (default) for a superiority trial. For a 2-arm trial only.}
+\item{margin}{Numeric in (-1, 1). Non-inferiority or substantial-superiority
+margin for the difference in proportions (\code{pi2 - pi1}). Use \code{0} (default)
+for a superiority trial. Only applies to 2-arm trials.
+
+For an \strong{unfavourable} outcome (lower probability is better):
+\itemize{
+\item \code{m > 0}: non-inferiority — H0: \code{pi2 - pi1 >= m}, H1: \code{pi2 - pi1 < m}
+\item \code{m < 0}: substantial-superiority — H0: \code{pi2 - pi1 >= m}, H1: \code{pi2 - pi1 < m}
+}
+
+For a \strong{favourable} outcome (higher probability is better), the
+inequalities are reversed:
+\itemize{
+\item \code{m < 0}: non-inferiority — H0: \code{pi2 - pi1 <= m}, H1: \code{pi2 - pi1 > m}
+\item \code{m > 0}: substantial-superiority — H0: \code{pi2 - pi1 <= m}, H1: \code{pi2 - pi1 > m}
+}}
 
 \item{power}{Numeric in (0, 1). Desired power. Default \code{0.8}. Mutually
 exclusive with \code{n}.}
@@ -40,57 +54,89 @@ exclusive with \code{n}.}
 \item{n}{Integer. Total sample size, used to calculate power. Mutually
 exclusive with \code{power}.}
 
-\item{aratios}{Numeric vector. Allocation ratios. For a 2-arm trial,
-\code{aratios = r} is interpreted as \code{1:r}. Default: equal allocation.
-For >2 arms, must supply one ratio per arm.}
+\item{aratios}{Numeric vector. Allocation ratios for groups 1, 2, ..., K.
+For a 2-arm trial, a scalar \code{r} is interpreted as \code{1:r}. Default: equal
+allocation to all groups.}
 
 \item{ltfu}{Numeric in \verb{[0, 1)}. Expected loss to follow-up proportion.
-Default \code{0}. The calculated sample size is inflated by \code{1 / (1 - ltfu)}.}
+Default \code{0}. The calculated sample size is inflated by \code{1 / (1 - ltfu)}
+before rounding.}
 
-\item{alpha}{Numeric. Two-sided significance level. Default \code{0.05}.}
+\item{alpha}{Numeric. Significance level. Interpreted as two-sided unless
+\code{onesided = TRUE}. Default \code{0.05}.}
 
 \item{onesided}{Logical. If \code{TRUE}, \code{alpha} is interpreted as a one-sided
-level. Default \code{FALSE}.}
+level. \code{alpha(0.05)} is therefore equivalent to \verb{alpha(0.025), onesided}.
+Not allowed for multi-group trials unless \code{trend} or \code{doses} is specified.
+Default \code{FALSE}.
 
-\item{trend}{Logical. Use a linear trend test (>=3 arms only). Default
+Note: \code{artbin} always powers the trial for the direction of interest only,
+even when a two-sided alpha is given. This differs from \code{\link[stats:power.prop.test]{stats::power.prop.test()}},
+which reports power for rejection in either direction.}
+
+\item{trend}{Logical. Use a linear trend test (>=3 arms only). The default
+is a test for any difference between groups. See also \code{doses}. Default
 \code{FALSE}.}
 
-\item{doses}{Numeric vector. Dose values for the trend test (implies
-\code{trend = TRUE}). Defaults to \verb{0, 1, 2, ...} when \code{trend = TRUE}.}
+\item{doses}{Numeric vector. Dose (or other quantitative) values for a
+linear trend test across groups (implies \code{trend = TRUE}). If fewer doses
+than groups are provided, the last dose value is repeated for remaining
+groups. Default when \code{trend = TRUE}: \verb{1, 2, ..., K}. Not permitted for
+2-arm trials.}
 
-\item{condit}{Logical. Use Peto's conditional test. Default \code{FALSE}. Forces
-\code{local = TRUE} automatically.}
-
-\item{wald}{Logical. Use the Wald test. Default \code{FALSE} (score test).}
-
-\item{ccorrect}{Logical. Apply continuity correction (2-arm only). Default
+\item{condit}{Logical. Use Peto's conditional test, which conditions on the
+total number of events and uses Peto's one-step approximation to the log
+odds ratio. This is also a good approximation for other conditional tests.
+Implies \code{local = TRUE}. Not available for non-inferiority or
+substantial-superiority trials, or with \code{wald} or \code{ccorrect}. Default
 \code{FALSE}.}
 
-\item{local}{Logical. Use local alternatives. Default \code{FALSE} (distant).}
+\item{wald}{Logical. Use the Wald test (null variance estimated from the
+sample). Default \code{FALSE} (score test). Cannot be combined with \code{local},
+\code{condit}, or \code{ccorrect}.}
+
+\item{ccorrect}{Logical. Apply a continuity correction. Not available with
+\code{condit}. 2-arm only. Default \code{FALSE}.}
+
+\item{local}{Logical. Use local alternatives: the variance of the difference
+in proportions is computed under the null hypothesis only, rather than
+under both null and alternative. This approximation is reasonable when the
+odds ratio under the alternative is between about 0.5 and 2, but tends to
+give larger sample sizes than the default (distant alternatives) and is not
+generally recommended. It is included to allow comparisons with other
+software. Cannot be combined with \code{wald}. Default \code{FALSE}.}
 
 \item{noround}{Logical. If \code{TRUE}, do not round sample sizes to integers.
-Default \code{FALSE} (round up). Automatically set to \code{TRUE} when \code{n} is
-supplied.}
+Default \code{FALSE} (round each group up to the nearest integer).
+Automatically set to \code{TRUE} when \code{n} is supplied.}
 
-\item{favourable}{Logical or \code{NULL}. \code{TRUE} = favourable outcome (event is
-good, e.g. survival); \code{FALSE} = unfavourable. \code{NULL} (default) = infer
-from \code{pr} and \code{margin}.}
+\item{favourable}{Logical or \code{NULL}. \code{TRUE} = favourable outcome (higher
+probability is better, e.g. survival); \code{FALSE} = unfavourable (lower is
+better, e.g. mortality). \code{NULL} (default) = infer from \code{pr} and \code{margin}:
+if \code{pi2^a > pi1^a + margin} the outcome is assumed favourable, otherwise
+unfavourable.}
 
-\item{force}{Logical. If \code{TRUE}, suppress the error when the inferred
-outcome direction conflicts with \code{favourable}. Default \code{FALSE}.}
+\item{force}{Logical. If \code{TRUE}, suppress the error raised when the
+inferred outcome direction conflicts with the \code{favourable} argument. Useful
+when designing observational studies where a harmful risk factor reverses
+the usual favourability interpretation. Default \code{FALSE}.}
 
-\item{nvmethod}{Integer (1, 2, or 3). Method for estimating null-hypothesis
-event probabilities in 2-arm trials. \code{1} = sample estimate; \code{2} = fixed
-marginal totals; \code{3} = constrained maximum likelihood (default).}
+\item{nvmethod}{Integer (1, 2, or 3). Controls how null-hypothesis event
+probabilities are estimated in 2-arm trials. \code{1} = sample estimate (Wald);
+\code{2} = fixed marginal totals; \code{3} = constrained maximum likelihood (score,
+default). Setting \code{wald = TRUE} automatically uses \code{nvmethod = 1}; this
+argument is provided for comparisons with other software.}
 
-\item{convcrit}{Numeric. Convergence criterion for the bisection used in
-k-group calculations. Default \code{1e-7}.}
+\item{convcrit}{Numeric. Convergence criterion for the bisection algorithm
+used in k-group (>=3 arm) sample size calculations. Tighten (e.g. \code{1e-8})
+if greater numerical precision is needed. Default \code{1e-7}.}
 }
 \value{
 An object of class \code{"artbin"}, which is a named list containing:
 \describe{
 \item{\code{n}}{Total sample size (or the input \code{n} when computing power).}
-\item{\code{n_per_group}}{Named integer vector of per-group sample sizes.}
+\item{\code{n_per_group}}{Named integer vector of per-group sample sizes
+(\code{group_1}, \code{group_2}, ...).}
 \item{\code{power}}{Power (designed or calculated).}
 \item{\code{D}}{Expected total number of events.}
 \item{\code{D_per_group}}{Named numeric vector of per-group expected events.}
@@ -108,24 +154,56 @@ Logical flags as supplied.}
 Calculates sample size (given power) or power (given total sample size) for
 clinical trials with binary outcomes, supporting two or more arms.
 }
+\details{
+All calculations are based on a Normal approximation to the difference in
+proportions (or, with \code{condit}, to the score statistic). This approximation
+may be unreliable for very small samples. As a guide, treat results with
+caution when any expected cell count falls below 5 (the standard rule for
+Pearson's chi-squared test). For small samples, consider using the continuity
+correction (\code{ccorrect = TRUE}) or verifying the power by simulation.
+
+In a \strong{multi-group trial}, \code{artbin} tests the global null hypothesis that
+all probabilities are equal. The alternative is that at least two groups
+differ.
+
+\code{artbin} can also be used to design observational studies. For a harmful
+risk factor, the favourable/unfavourable outcome types are reversed relative
+to a clinical trial; use \code{force = TRUE} to override the inferred direction.
+}
 \examples{
-# 2-arm superiority trial
+# 2-arm superiority trial (outcome inferred as favourable: pi2 > pi1)
 artbin(pr = c(0.25, 0.35))
 
-# Non-inferiority trial (unfavourable outcome, p2 <= p1 + margin)
+# Same but with local alternatives (reasonable when OR is between 0.5 and 2)
+artbin(pr = c(0.25, 0.35), local = TRUE)
+
+# Non-inferiority trial (unfavourable outcome)
 artbin(pr = c(0.1, 0.1), margin = 0.2, wald = TRUE, power = 0.9, alpha = 0.1)
 
 # Calculate power for a given sample size
 artbin(pr = c(0.25, 0.35), n = 400)
 
-# Four-arm superiority trial
-artbin(pr = c(0.15, 0.25, 0.35, 0.45))
+# Four-arm superiority trial with unequal allocation (1:2:2:2)
+artbin(pr = c(0.15, 0.25, 0.35, 0.45), aratios = c(1, 2, 2, 2))
+
+# Four-arm trial using a linear trend test
+artbin(pr = c(0.15, 0.25, 0.35, 0.45), trend = TRUE)
 
 # With 20\% loss to follow-up
 artbin(pr = c(0.25, 0.35), ltfu = 0.2)
 
 }
 \references{
+Marley-Zagar, E., White, I.R., Royston, P., Barthel, F.M.-S., Parmar,
+M.K.B. & Babiker, A.G. (2023). artbin: Extended sample size for
+randomised trials with binary outcomes. \emph{Stata Journal}, \strong{23}, 24–52.
+\doi{10.1177/1536867X231161971}
+
+Quartagno, M., Walker, A.S., Babiker, A.G. et al. (2020). Handling an
+uncertain control group event risk in non-inferiority trials:
+non-inferiority frontiers and the power-stabilising transformation.
+\emph{Trials}, \strong{21}, 145. \doi{10.1186/s13063-020-4070-4}
+
 Barthel, F.M.-S., Royston, P. & Babiker, A. (2005). A menu-driven facility
 for complex sample size calculations in randomized controlled trials with a
 survival or a binary outcome: update. \emph{Stata Journal}, \strong{5}, 123–129.
