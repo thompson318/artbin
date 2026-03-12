@@ -1,0 +1,109 @@
+---
+title: "artbin examples"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{artbin examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(artbin)
+```
+
+This vignette reproduces the examples from Section 3 of the artbin Stata Journal
+article. Each section demonstrates a different study design.
+
+## Binary outcome and comparison with published sample size
+
+We reproduce the sample size calculation in Pocock (1983) for a 2-arm superiority
+trial comparing anturan with placebo in patients after a myocardial infarction.
+The primary outcome was death from any cause within one year. The control
+(placebo) arm was expected to have a 10% probability of death and the treatment
+arm a 5% probability, with the trial powered at 90%.
+
+`artbin` infers the outcome direction from the probabilities: because the
+treatment arm probability (0.05) is lower than the control (0.10), the outcome
+is unfavourable (the trial aims to *reduce* the event probability).
+
+The Wald test is used here because Pocock used the sample estimate of the null
+variance.
+
+```{r pocock}
+artbin(pr = c(0.1, 0.05), alpha = 0.05, power = 0.9, wald = TRUE)
+```
+
+A total sample size of 1156 participants is required, matching the published
+figure. The same result is obtained using `pr = c(0.9, 0.95)` with a favourable
+outcome (survival).
+
+## Binary outcome and comparison with the score test
+
+`artbin` uses the score test by default. We compare it with the equivalent
+call using the Wald test from the previous section.
+
+```{r score}
+artbin(pr = c(0.1, 0.05), alpha = 0.05, power = 0.9)
+```
+
+Both give a total sample size of 1164 with the score test.
+
+## One-sided non-inferiority trial
+
+A one-sided non-inferiority trial assuming a 90% probability of survival in both
+arms, with the treatment arm required to be no more than 5 percentage points less
+effective than control.
+
+```{r ni-onesided}
+artbin(pr = c(0.9, 0.9), margin = -0.05, onesided = TRUE)
+```
+
+A sample size of 457 is required in each group (914 total).
+
+## Superiority trial with multiple arms
+
+`artbin` supports trials with more than two arms. Rather than comparing each
+treatment arm to control individually, it uses a global test for any difference
+among the groups.
+
+```{r multiarm}
+artbin(pr = c(0.1, 0.2, 0.3, 0.4), alpha = 0.1, power = 0.9)
+```
+
+A sample size of 44 is required in each of the four groups (176 total).
+
+## Complex non-inferiority trial: the STREAM trial
+
+The STREAM trial evaluated a shorter intensive treatment for multi-drug resistant
+tuberculosis against the lengthier WHO-recommended treatment. The design
+parameters were:
+
+- 70% favourable outcome probability on control, 75% on treatment
+- 10 percentage-point non-inferiority margin ($m = \pi_2 - \pi_1 \geq -0.1$)
+- 1:2 allocation (twice as many patients in the treatment arm)
+- 20% loss to follow-up
+- Wald test (commonly used in non-inferiority trials)
+
+```{r stream}
+artbin(
+  pr      = c(0.7, 0.75),
+  margin  = -0.1,
+  power   = 0.8,
+  aratios = c(1, 2),
+  wald    = TRUE,
+  ltfu    = 0.2
+)
+```
+
+A total sample size of 398 is required (133 control, 265 treatment), allowing
+for 20% loss to follow-up. When the STREAM trial concluded, it found that the
+shorter treatment was only 1% less effective than the WHO-recommended treatment,
+demonstrating significant evidence of non-inferiority.
+
+## References
+
+Pocock SJ (1983). *Clinical Trials: A Practical Approach*. Wiley.
+
+Nunn AJ et al. (2019). A Trial of a Shorter Regimen for Rifampin-Resistant
+Tuberculosis. *New England Journal of Medicine*, 380, 1201–1213.

@@ -62,12 +62,25 @@ Commit results
 commit new tests
 ```
 ## Add github actions to run tests
+It's good practice to run tests regularly, get Claude to write a github workflow to do this.
 ```
 write a github workflow to run tests on push to main, pull requests to main, and workflow dispatch
 ```
+and commit it.
 ```
 commit workflow
 ```
+You can check the result of this by visiting the actions tab on github. The run produces 2 warnings. Fix these by 
+prompting
+```
+run rcmdcheck
+```
+
+rcmdcheck is not running the unit tests defined in tests/testthat, ask Claude why not
+```
+why isn't rcmdcheck running tests
+```
+Follow the prompts and this should create the file [tests/testthat.R](../R-package/tests/testthat.R)
 ## Adding dialog boxes
 Claude did not translate the Stata dialog box `artbin.dlg`
 
@@ -85,3 +98,12 @@ Commit the dialog box with git.
 commit dialog box 
 ```
 ## Documentation / Helpfiles / Vignettes
+
+Use the examples given in the Stata package to create a Vignette
+```
+create vignettes based on examples/artbin_examples
+```
+and commit it 
+```
+commit vignette
+```

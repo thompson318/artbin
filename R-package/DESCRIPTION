@@ -23,7 +23,10 @@ RoxygenNote: 7.3.3
 Imports:
     cli
 Suggests:
+    knitr,
+    rmarkdown,
     shiny,
     testthat (>= 3.0.0),
     tibble
+VignetteBuilder: knitr
 Config/testthat/edition: 3
