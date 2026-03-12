@@ -107,3 +107,17 @@ and commit it
 ```
 commit vignette
 ```
+
+The Stata package contains a lot of documentation in the .sthlp files, which don't appear to 
+have been used when creating the R package documentation. Lets check.
+```
+is there any information the .sthlp files that is missing from the R package
+```
+and if necessary add it
+```
+update the R package documentation to include missing information
+```
+and commit
+```
+commit changes
+```
